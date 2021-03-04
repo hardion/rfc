@@ -134,8 +134,8 @@ The following specifies the Device Lock system:
 * Only one Device Lock per Device SHALL be activated.
 * A Device Lock SHALL be only owned by one Client.
 
-When a Client activates a Device Lock, the Server MUST reject any of the following requests from any other Client:
-* Command call except for State Command, Status Command and all commands listed in the Allowed Commands list (described further down).
+When a Client activates a Device Lock, the Device Server MUST reject any of the following requests from any other Client:
+* Command call except for the State Command, the Status Command and all commands listed in the Allowed Commands list (described further down).
 * Write Attribute Request (including the atomic Write Read request)
 * Write Pipe Request (including the atomic Write Read request)
 * Setting Attribute Configuration
@@ -146,9 +146,18 @@ In general it is RECOMMENDED to block any request resulting in a mutation of a D
 
 An Allowed Command is not affected by the Device Lock, even if this command execution implies a modification of the Device state. A list of Allowed Commands are defined per Device Class with the `AllowedAccessCmd` Class Property of type DevVarStringArray.
 
-Other Clients MAY use DevLockStatus command of a DeviceServer to check if a Device Lock is currently activated.
++Other Clients have the possibility to check a Device Lock is currently activated via the Device Server Command '''DevLockStatus''' specified by:
++* Command Name: DevLockStatus
++* Argument Input of DevString type corresponding to the Device Name
++* Argument Output of DevVarLongStringArray type giving the Device Lock status with these mandatory values:
++** String values in order: the Client hostname, 
++** Long values in order: the activation state, the Client IP  
++
 
-The request of a Device Lock is done throught the DeviceServer command LockDevice. The protocol of activation SHALL be the responsibility of the Device Server, following this sequence:
++The request of a Device Lock is done through the DeviceServer command '''LockDevice''' with the Input Argument of DevVarLongStringArray with the following value:
++* as string value the Device Name to lock,
++* as long value the validity time in second. 
++The protocol of activation SHALL be the responsibility of the Device Server, following this sequence: ```
 * Check no other Client owns an active and valid DeviceLock on the requested Device
 * Activate the Device Lock 
 * Increase the counter of Device Lock (See Below).
@@ -156,8 +165,8 @@ The request of a Device Lock is done throught the DeviceServer command LockDevic
 In case of failure of the activation of a Device Lock the Device Server SHALL throw a related DevFailed exception with \<reason\> field set to "API_DeviceLocked".
 
 A Client owning a Device Lock MAY:
-* revoke the Device Lock by the DeviceServer command UnLockDevice,
-* renew the Device Lock activation by the DeviceServer command ReLockDevices
+* revoke the Device Lock by the DeviceServer's UnLockDevice Command,
+* renew the Device Lock activation by the DeviceServer's ReLockDevices Command
 A Locking Tango Exception SHALL be thrown if the Device Lock is not active anymore.
 
 
@@ -167,14 +176,14 @@ A Device Lock is defined by:
 * a counter representing the number of valid activation from the same Client 
 * the activation time in second defining the locking period from the last activation timestamp 
 
-A Device Lock SHALL be deactivated when:
-* The Client which locked the Devcie call DeviceServer command UnLockDevice for the locked Device,
-* or any Client call DeviceServer command UnLockDevice for the locked Device with a `force` flag set to true,
-* or Time of activation expired,
-* or the Connection to the Client is lost,
+A Device Lock SHALL be deactivated in any of the following cases:
+* The Client owning the Device Lock, calls the Device Server's UnLockDevice Command for the locked Device,
+* Any Client calls the DeviceServer's UnLockDevice Command with a `force` flag set to true for the locked Device,
+* The time of activation expired,
+* The Connection to the Client is lost,
 * The Device Server is reinitialised.
 
-If Device Lock has been disabled with `force` flag set to true, the Server SHALL sent to the Client who originaly owned the Device Lock a DevFailed exception with reason set to "API_DeviceUnlocked" upon next request from the Client.
+If the Device Lock has been disabled with the `force` flag set to true, the Server SHALL sent to the Client who originally owned the Device Lock a DevFailed exception with reason set to "API_DeviceUnlocked" upon next request from the Client.
 
 A Client Identification SHOULD carry these information:
 * Hostname where the Client process runs
